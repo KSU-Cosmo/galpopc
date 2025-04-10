@@ -1,0 +1,15 @@
+# Ignore Python cache and compiled files
+__pycache__/
+*.pyc
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.so
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS junk
+.DS_Store

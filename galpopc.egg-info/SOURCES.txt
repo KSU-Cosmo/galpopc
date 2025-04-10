@@ -1,0 +1,12 @@
+MANIFEST.in
+README.md
+pyproject.toml
+setup.py
+galpopc/__init__.py
+galpopc/galcore.c
+galpopc/galpop.py
+galpopc.egg-info/PKG-INFO
+galpopc.egg-info/SOURCES.txt
+galpopc.egg-info/dependency_links.txt
+galpopc.egg-info/requires.txt
+galpopc.egg-info/top_level.txt
