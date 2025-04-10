@@ -1,5 +1,4 @@
 import numpy as np
-from . import galcore  # C extension for centrals + satellites
 
 def populate_galaxies(
     # Halo arrays
@@ -12,6 +11,9 @@ def populate_galaxies(
     # Other parameters
     rsd, Lmin, Lmax
 ):
+    
+    from . import galcore  # C extension for centrals + satellites to avoid circular init issues
+
     Nh = len(h_mass_log10)
     Ns = len(s_mass)
 
