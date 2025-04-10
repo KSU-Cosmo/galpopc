@@ -1,1 +1,1 @@
-from .galpop import populate_galaxies
+from .hod import populate_galaxies
