@@ -53,6 +53,8 @@ def populate_galaxies(
 
     # --- Return selected galaxy positions ---
     return (
-        h_x[gal_mask.astype(bool)], h_y[gal_mask.astype(bool)], cen_z[gal_mask.astype(bool)],
-        s_x[sat_mask.astype(bool)], s_y[sat_mask.astype(bool)], sat_z[sat_mask.astype(bool)]
+        np.concatenate([h_x[gal_mask], s_x[sat_mask]]),
+        np.concatenate([h_y[gal_mask], s_y[sat_mask]]),
+        np.concatenate([cen_z[gal_mask], sat_z[sat_mask]])
     )
+
