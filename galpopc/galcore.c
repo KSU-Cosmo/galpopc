@@ -18,20 +18,24 @@ static PyObject* compute_centrals(PyObject* self, PyObject* args) {
     PyArrayObject *out_z_arr, *out_mask_arr;
 
     float lnMcut, sigma, alpha_c;
+    float Lmin, Lmax;
+    int rsd;
     unsigned int seed;
 
-    if (!PyArg_ParseTuple(args, "O!O!O!O!fffIO!O!",
+    if (!PyArg_ParseTuple(args, "O!O!O!O!fffffIIO!O!",
                           &PyArray_Type, &h_mass_log10_arr,
                           &PyArray_Type, &h_z_arr,
                           &PyArray_Type, &h_vel_arr,
                           &PyArray_Type, &h_sigma_arr,
-                          &lnMcut, &sigma, &alpha_c, &seed,
+                          &lnMcut, &sigma, &alpha_c,
+                          &Lmin, &Lmax, &rsd, &seed,
                           &PyArray_Type, &out_z_arr,
                           &PyArray_Type, &out_mask_arr)) {
         return NULL;
     }
 
     int N = PyArray_SIZE(h_mass_log10_arr);
+
     float* h_mass_log10 = (float*)PyArray_DATA(h_mass_log10_arr);
     float* h_z = (float*)PyArray_DATA(h_z_arr);
     float* h_vel = (float*)PyArray_DATA(h_vel_arr);
@@ -40,8 +44,9 @@ static PyObject* compute_centrals(PyObject* self, PyObject* args) {
     uint8_t* out_mask = (uint8_t*)PyArray_DATA(out_mask_arr);
 
     float inv_sqrt2sigma = 1.0f / (sqrtf(2.0f) * sigma);
-    
-    #pragma omp parallel for
+    float Lbox = Lmax - Lmin;
+
+    #pragma omp parallel for simd
     for (int i = 0; i < N; ++i) {
         float x = (lnMcut - h_mass_log10[i]) * inv_sqrt2sigma;
         float p = 0.5f * erfcf(x);
@@ -49,24 +54,26 @@ static PyObject* compute_centrals(PyObject* self, PyObject* args) {
         float r = (float)rand_r(&tid_seed) / RAND_MAX;
         float g = randn(&tid_seed);
 
+        float z = h_z[i];
+        uint8_t mask = 0;
+
         if (r < p) {
-            out_mask[i] = 1;
-            float z = h_z[i];
+            mask = 1;
             if (rsd) {
                 z += h_vel[i] + alpha_c * h_sigma[i] * g;
                 if (z > Lmax) z -= Lbox;
                 if (z < Lmin) z += Lbox;
             }
-            out_z[i] = z;
-        } else {
-            out_mask[i] = 0;
-            out_z[i] = h_z[i];
         }
-        
+
+        out_z[i] = z;
+        out_mask[i] = mask;
     }
 
     Py_RETURN_NONE;
 }
+
+
 
 static PyObject* compute_satellites(PyObject* self, PyObject* args) {
     PyArrayObject *s_mass_log10_arr, *s_mass_arr, *s_npart_arr;
@@ -105,7 +112,7 @@ static PyObject* compute_satellites(PyObject* self, PyObject* args) {
     float Lbox = Lmax - Lmin;
     float Mcut = powf(10.0f, lnMcut);
 
-    #pragma omp parallel for
+    #pragma omp parallel for simd
     for (int i = 0; i < N; ++i) {
         unsigned int tid_seed = seed + i + 137 * omp_get_thread_num();  // vary seed across threads
 
@@ -113,37 +120,36 @@ static PyObject* compute_satellites(PyObject* self, PyObject* args) {
         float ncen = 0.5f * erfcf(x);
 
         float m_eff = s_mass[i] - kappa * Mcut;
-        if (m_eff <= 0.0f) {
-            out_mask[i] = 0;
-            out_z[i] = s_z[i];
-            continue;
-        }
+        float z = s_z[i];
+        uint8_t mask = 0;
 
-        float mrat = m_eff / M1;
-        float nsat = expf(alpha * logf(mrat)) * ncen;
-        float psat = nsat / s_npart[i];
-        if (psat > 1.0f) psat = 1.0f;
-        if (psat < 0.0f) psat = 0.0f;
+        if (m_eff > 0.0f) {
+            float mrat = m_eff / M1;
+            if (mrat <= 0.0f) mrat = 1e-10f;  // avoid logf domain error
+            float nsat = expf(alpha * logf(mrat)) * ncen;
+            float psat = nsat / s_npart[i];
+            if (psat > 1.0f) psat = 1.0f;
+            if (psat < 0.0f) psat = 0.0f;
 
-        float r = (float)rand_r(&tid_seed) / RAND_MAX;
+            float r = (float)rand_r(&tid_seed) / RAND_MAX;
 
-        if (r < psat) {
-            out_mask[i] = 1;
-            float z = s_z[i];
-            if (rsd) {
-                z += s_host_vel[i] + alpha_s * (s_vel[i] - s_host_vel[i]);
-                if (z > Lmax) z -= Lbox;
-                if (z < Lmin) z += Lbox;
+            if (r < psat) {
+                mask = 1;
+                if (rsd) {
+                    z += s_host_vel[i] + alpha_s * (s_vel[i] - s_host_vel[i]);
+                    if (z > Lmax) z -= Lbox;
+                    if (z < Lmin) z += Lbox;
+                }
             }
-            out_z[i] = z;
-        } else {
-            out_mask[i] = 0;
-            out_z[i] = s_z[i];
         }
+
+        out_z[i] = z;
+        out_mask[i] = mask;
     }
 
     Py_RETURN_NONE;
 }
+
 
 // === Python module setup ===
 static PyMethodDef methods[] = {

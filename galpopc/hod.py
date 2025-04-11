@@ -30,7 +30,8 @@ def populate_galaxies(
         h_z.astype(np.float32),
         h_velocity.astype(np.float32),
         h_sigma.astype(np.float32),
-        float(lnMcut), float(sigma), float(alpha_c), np.random.randint(1 << 30),
+        float(lnMcut), float(sigma), float(alpha_c), 
+        float(Lmin), float(Lmax), int(rsd), np.random.randint(1 << 30),
         cen_z, gal_mask
     )
 
@@ -56,10 +57,9 @@ def populate_galaxies(
     gal_mask = gal_mask.astype(bool)
     sat_mask = sat_mask.astype(bool)
     # --- Return selected galaxy positions ---
-    return (h_x[gal_mask], s_x[sat_mask], h_y[gal_mask], s_y[sat_mask], h_z[gal_mask], s_z[sat_mask], cen_z[gal_mask], sat_z[sat_mask])
-#    return (
-#        np.concatenate([h_x[gal_mask], s_x[sat_mask]]),
-#        np.concatenate([h_y[gal_mask], s_y[sat_mask]]),
-#        np.concatenate([cen_z[gal_mask], sat_z[sat_mask]])
-#    )
+    return (
+        np.concatenate([h_x[gal_mask], s_x[sat_mask]]),
+        np.concatenate([h_y[gal_mask], s_y[sat_mask]]),
+        np.concatenate([cen_z[gal_mask], sat_z[sat_mask]])
+    )
 
