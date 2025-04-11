@@ -49,14 +49,20 @@ static PyObject* compute_centrals(PyObject* self, PyObject* args) {
         float r = (float)rand_r(&tid_seed) / RAND_MAX;
         float g = randn(&tid_seed);
 
-
         if (r < p) {
             out_mask[i] = 1;
-            out_z[i] = h_z[i] + h_vel[i] + alpha_c * h_sigma[i] * g;
+            float z = h_z[i];
+            if (rsd) {
+                z += h_vel[i] + alpha_c * h_sigma[i] * g;
+                if (z > Lmax) z -= Lbox;
+                if (z < Lmin) z += Lbox;
+            }
+            out_z[i] = z;
         } else {
             out_mask[i] = 0;
-            out_z[i] = h_z[i];  // Or leave unchanged
+            out_z[i] = h_z[i];
         }
+        
     }
 
     Py_RETURN_NONE;
